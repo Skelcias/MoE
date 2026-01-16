@@ -17,7 +17,7 @@ def is_small_dataset(num_samples: int, threshold: int = 10000) -> bool:
 
 
 def get_data_loader(X: torch.Tensor, y: torch.Tensor, batch_size: int, 
-                    is_small: bool, num_workers: int = 2) -> Optional[DataLoader]:
+                    is_small: bool, num_workers: int = 8) -> Optional[DataLoader]:
     """
     Crée un DataLoader si nécessaire, sinon retourne None.
     """
@@ -29,8 +29,10 @@ def get_data_loader(X: torch.Tensor, y: torch.Tensor, batch_size: int,
         dataset,
         batch_size=batch_size,
         shuffle=True,
-        num_workers=num_workers,
-        pin_memory=torch.cuda.is_available()
+        num_workers=num_workers,  
+        pin_memory=True, 
+        persistent_workers=True,  
+        prefetch_factor=2  
     )
 
 

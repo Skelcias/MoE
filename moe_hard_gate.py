@@ -37,19 +37,24 @@ class MoETopK(nn.Module):
         self.output_dim = output_dim
 
     def forward(self, x):
+        B = x.size(0) 
         gate_logits = self.gate(x)
         top_k_logits, top_k_indices = torch.topk(gate_logits, self.k, dim=-1)
         top_k_weights = F.softmax(top_k_logits, dim=-1) 
 
-        selected_outputs = torch.zeros(x.shape[0],self.k,self.output_dim,device=x.device)
+        output = torch.zeros(B,self.output_dim,device=x.device)
+        for e, expert in enumerate(self.experts):
+            mask = (top_k_indices == e)
+            if not mask.any():
+                continue
 
-        for batch_idx in range(x.shape[0]):
-            for i in range(self.k):
-                expert_idx = top_k_indices[batch_idx,i].item()
-                expert = self.experts[int(expert_idx)]    
-                selected_outputs[batch_idx,i] = expert(x[batch_idx])
+            batch_mask = mask.any(dim=1)
+            x_sub = x[batch_mask]
+            y_sub = expert(x_sub)
+            w = top_k_weights[mask]
+            w = w.unsqueeze(-1)
 
-        output = (selected_outputs * top_k_weights.unsqueeze(-1)).sum(dim=1)
+            output[batch_mask] += y_sub * w 
         self.last_counts = torch.bincount(top_k_indices.flatten(),minlength=self.num_experts)
         return output    
 
